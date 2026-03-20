@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.post.UserCollectMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.post.DO.UserCollect">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="userId" column="user_id" jdbcType="BIGINT"/>
+            <result property="collectPost" column="collect_post" jdbcType="BIGINT"/>
+            <result property="collectTime" column="collect_time" jdbcType="TIMESTAMP"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+    </resultMap>
+    <insert id="insertAll">
+        INSERT INTO user_collect(user_id,collect_post,collect_time) VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.userId},#{item.collectPost},#{item.collectTime})
+        </foreach>
+    </insert>
+    <delete id="deleteByPost" parameterType="java.lang.Long">
+        DELETE FROM user_collect WHERE collect_post=#{id}
+    </delete>
+    <delete id="clearUserCollectPost">
+        delete from user_collect where delete_flag=1
+    </delete>
+    <select id="selectAllIds" resultType="java.lang.Long">
+        SELECT collect_post FROM user_collect WHERE delete_flag=0
+    </select>
+    <select id="getFlagByPostId" resultType="java.lang.Integer">
+        select delete_flag from user_collect where collect_post=#{id} and user_id=#{userId}
+    </select>
+
+    <update id="deleteByUserIdIn">
+        update user_collect set delete_flag = 1
+        where
+        user_id in
+        <foreach collection="userIdList" item="item" open="(" close=")" separator=",">
+            #{item,jdbcType=NUMERIC}
+        </foreach>
+    </update>
+
+</mapper>

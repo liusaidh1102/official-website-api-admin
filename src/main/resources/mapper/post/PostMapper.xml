@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.post.PostMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.post.DO.Post">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="userId" column="user_id" jdbcType="BIGINT"/>
+            <result property="likeCount" column="like_count" jdbcType="INTEGER"/>
+            <result property="commentCount" column="comment_count" jdbcType="INTEGER"/>
+            <result property="viewCount" column="view_count" jdbcType="INTEGER"/>
+            <result property="postTime" column="post_time" jdbcType="TIMESTAMP"/>
+            <result property="title" column="title" jdbcType="VARCHAR"/>
+            <result property="postTxt" column="post_txt" jdbcType="VARCHAR"/>
+            <result property="postAbstract" column="post_abstract" jdbcType="VARCHAR"/>
+            <result property="type" column="type" jdbcType="TINYINT"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <update id="updateViewCountById">
+        update post set view_count=#{viewCount} where id=#{id}
+    </update>
+    <update id="incrementLikeCount" parameterType="java.lang.Long">
+        update post set like_count = like_count + 1 where id = #{id}
+    </update>
+    <update id="descrementLikeCount" parameterType="java.lang.Long">
+        update post set like_count = like_count - 1 where id = #{id}
+    </update>
+
+
+    <select id="selectPostIdsByUid" resultType="java.lang.Long">
+        select id from post where user_id=#{uid}
+        <if test="type!=null and type!=''">
+            and type =#{type}
+        </if>
+    </select>
+
+    <select id="selectPostsByIds" resultType="weilai.team.officialWebSiteApi.entity.post.VO.PagePostVo">
+        select post.id, post.user_id, post.view_count, post.title, post.post_abstract, post.post_time, post.type,
+        user.name, user.head_portrait,post.like_count
+        from post
+                 join user on post.user_id = user.id
+        where post.id in
+        <foreach collection="ids" item="id" separator="," open="(" close=")">
+            #{id}
+        </foreach>
+         order by post.post_time desc
+    </select>
+
+    <select id="selectPostsByConditions" resultType="weilai.team.officialWebSiteApi.entity.post.VO.PagePostVo">
+        select post.user_id, user.name, user.head_portrait, post.id, post.view_count, post.title, post.post_abstract, post.post_time, post.type, post.like_count
+        from post
+        join user on post.user_id = user.id
+        <where>
+            and post.delete_flag = 0
+            <if test="type!=null and type!=''">
+                and post.type = #{type}
+            </if>
+            <choose>
+                <when test="startTime != null and endTime != null">
+                    and post.post_time between #{startTime} and #{endTime}
+                </when>
+                <when test="startTime != null">
+                    and post.post_time &gt;= #{startTime}
+                </when>
+                <when test="endTime != null">
+                    and post.post_time &lt;= #{endTime}
+                </when>
+            </choose>
+            <if test="condition!=null and condition!=''">
+                and (
+                post.title like concat('%', #{condition}, '%')
+                or post.post_txt like concat('%', #{condition}, '%')
+                or post.post_abstract like concat('%', #{condition}, '%')
+                or user.name like concat('%', #{condition}, '%')
+                )
+            </if>
+            and post.type!=2
+        </where>
+        order by post.like_count desc,post.view_count desc,post.post_time desc
+    </select>
+    <select id="selectPostByConditions" resultType="weilai.team.officialWebSiteApi.entity.post.VO.PagePostVo">
+        select post.user_id, user.name, user.head_portrait, post.id, post.view_count, post.title, post.post_abstract, post.post_time, post.type,post.like_count
+        from post
+        join user on post.user_id = user.id
+        <where>
+            and post.delete_flag = 0
+            <if test="type!=null and type!=''">
+                and post.type = #{type}
+            </if>
+                         <choose>
+                             <when test="startTime != null and endTime != null">
+                                 and post.post_time between #{startTime} and #{endTime}
+                             </when>
+                             <when test="startTime != null">
+                                 and post.post_time &gt;= #{startTime}
+                             </when>
+                             <when test="endTime != null">
+                                 and post.post_time &lt;= #{endTime}
+                             </when>
+                         </choose>
+
+            <if test="condition!=null and condition!=''">
+                and (
+                post.title like concat('%', #{condition}, '%')
+                or post.post_txt like concat('%', #{condition}, '%')
+                or post.post_abstract like concat('%', #{condition}, '%')
+                or user.name like concat('%', #{condition}, '%')
+                )
+            </if>
+        </where>
+        and post.type!=2
+        order by post.post_time desc
+    </select>
+    <select id="selectTypeByPostId" resultType="java.lang.Integer">
+        select type from post where id=#{postId}
+    </select>
+    <select id="selectAdminPosts" resultType="weilai.team.officialWebSiteApi.entity.post.VO.AdminPagePostVo">
+        select post.id, user.name,  post.title,  post.post_time, post.type
+        from post
+        join user on post.user_id = user.id
+        <where>
+            and post.delete_flag = 0
+            <if test="type!=null and type!=''">
+                and post.type = #{type}
+            </if>
+            <choose>
+                <when test="startTime != null and endTime != null">
+                    and post.post_time between #{startTime} and #{endTime}
+                </when>
+                <when test="startTime != null">
+                    and post.post_time &gt;= #{startTime}
+                </when>
+                <when test="endTime != null">
+                    and post.post_time &lt;= #{endTime}
+                </when>
+            </choose>
+            <if test="condition!=null and condition!=''">
+                and (
+                post.title like concat('%', #{condition}, '%')
+                or post.post_txt like concat('%', #{condition}, '%')
+                or post.post_abstract like concat('%', #{condition}, '%')
+                or user.name like concat('%', #{condition}, '%')
+                )
+            </if>
+            and post.type!=2
+        </where>
+        order by post.post_time desc
+    </select>
+
+    <delete id="deleteByUserIdIn">
+        delete from post
+        where
+        user_id in
+        <foreach collection="userIdList" item="item" open="(" close=")" separator=",">
+            #{item,jdbcType=NUMERIC}
+        </foreach>
+    </delete>
+    <delete id="clearPost">
+        delete from post where delete_flag=1
+    </delete>
+
+
+</mapper>

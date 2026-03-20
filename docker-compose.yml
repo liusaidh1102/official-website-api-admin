@@ -1,0 +1,83 @@
+services:
+  # MySQL 服务
+  mysql_3306:
+    container_name: mysql
+    image: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: QAdz.cnAQ
+    volumes:
+      - mysql_3306:/var/lib/mysql
+      - mysql_3306_conf:/etc/mysql
+    restart: always
+
+  # Redis 服务（带日志限制）
+  redis_6379:
+    container_name: redis
+    image: redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_6379:/data
+      - redis_6379_conf:/etc/redis
+    command: redis-server --requirepass W-dz.cn-W  # 直接指定密码
+    logging:
+      driver: json-file
+      options:
+        max-size: "100m"
+        max-file: "2"
+    restart: always
+
+  # MinIO 服务（带控制台）
+  minio_9000_9002:
+    container_name: minio
+    image: quay.io/minio/minio
+    ports:
+      - "9000:9000"   # API 端口
+      - "9002:9002"   # 控制台端口
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - minio_9000_9002:/data
+      - ./certs:/root/.minio/certs
+    command: server /data --console-address ":9002"
+    restart: always
+
+  # RabbitMQ 服务（带管理界面）
+  rabbitmq_15672_5672:
+    container_name: rabbitmq
+    image: rabbitmq:management  # 带管理界面的镜像
+    ports:
+      - "5672:5672"   # AMQP 端口
+      - "15672:15672" # 管理界面端口
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    volumes:
+      - rabbitmq:/var/lib/rabbitmq
+    restart: always
+
+  # Java 应用服务
+  java_app:
+    container_name: official-website-api
+    image: openjdk:8-alpine
+    ports:
+      - "8087:8087"
+    volumes: # 注意这里是直接在服务器上运行（即：这个docker-compose文件要在服务器运行）
+      - ./official-website-api-V1.0.jar:/app.jar
+      - ./ssl:/ssl  # 挂载存放SSL证书的目录
+    # 运行
+    command: java -Duser.timezone=Asia/Shanghai -jar /app.jar
+    restart: always
+
+# 定义命名卷（会自动创建，无需手动初始化）
+volumes:
+  mysql_3306:
+  mysql_3306_conf:
+  redis_6379:
+  redis_6379_conf:
+  minio_9000_9002:
+  rabbitmq:

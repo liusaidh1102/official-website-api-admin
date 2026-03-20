@@ -1,0 +1,79 @@
+spring:
+  # MySQL配置文件
+  datasource:
+    url: jdbc:mysql://localhost:3306/wlgzs_official_website_api?serverTimezone=Asia/Shanghai
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  redis:
+    host: localhost
+    port: 6379
+    password: root
+    database: 1
+    timeout: 10000
+    jedis:
+      pool:
+        max-active: 50
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: root
+    password: root
+    virtual-host: /officialWebsite
+  #设置最大的文件上传
+  servlet:
+    multipart:
+      #控制整个请求的大小，包括所有表单字段和文件数据。默认为10MB
+      max-request-size: 5000MB
+      #控制单个文件的大小，默认为1MB
+      max-file-size: 1000MB
+
+  # 邮箱配置
+  mail:
+    host: smtp.163.com
+    port: 465
+    password: root
+    username: root
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          enable: true
+          from: root@root
+          ssl:
+            enable: true
+          socketFactoryClass: javax.net.ssl.SSLSocketFactory
+  # 调整通过网络发送给前端的日期的时区
+  jackson:
+    time-zone: GMT+8
+
+# SQL日志
+mybatis-plus:
+  configuration:
+    # 是否开启SQL日志
+#    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    call-setters-on-nulls: true
+
+# tomcat配置
+server:
+  port: 8087
+  ssl:
+    enabled: true
+    key-store: classpath:ssl/api.weilai.team.pfx # 用于本地运行
+#    key-store: /ssl/api.weilai.team.pfx
+    key-store-password: oxumerg8
+    key-store-type: PKCS12
+
+
+#minio的配置
+minio:
+  secret-key: root
+  access-key: root
+  bucket-name: wlgzs-official-website
+  endpoint: https://api.weilai.team:9000
+
+# 钉钉配置
+ding:
+  app_key: root
+  app_secret: root

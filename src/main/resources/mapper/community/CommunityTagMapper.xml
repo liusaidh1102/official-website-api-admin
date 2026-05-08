@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.community.CommunityTagMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.community.DO.CommunityTag">
+            <id property="tid" column="tid" jdbcType="BIGINT"/>
+            <result property="tagName" column="tag_name" jdbcType="VARCHAR"/>
+            <result property="tagUses" column="tag_uses" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <if test="true">
+            tid,tag_name,tag_uses,
+            is_deleted
+        </if>
+    </sql>
+
+
+    <update id="updateByName">
+        UPDATE community_tag
+        SET tag_uses = tag_uses + 1
+        WHERE tag_name = #{tagName}
+    </update>
+
+
+    <update id="subByTid">
+        UPDATE community_tag
+        SET tag_uses = #{tagUses}
+        WHERE tid = #{tid}
+    </update>
+    <update id="updateUsesByTid">
+        UPDATE community_tag
+        SET tag_uses = tag_uses-1
+        WHERE tid = #{tid}
+    </update>
+
+    <select id="findByName" resultType="weilai.team.officialWebSiteApi.entity.community.DO.CommunityTag">
+        SELECT tid, tag_name, tag_uses
+        FROM community_tag
+        WHERE tag_name = #{tagName}
+    </select>
+
+    <select id="findById" resultType="java.lang.String">
+        SELECT t.tag_name,COUNT(r.tag_id) AS tag_count FROM community_tag t join
+        community_tag_post_relations r on t.tid = #{totalTagId}
+        GROUP BY t.tid,t.tag_name ORDER BY tag_count DESC  LIMIT 6;
+    </select>
+
+    <select id="findHotTagsByTagUses" resultType="java.lang.String">
+        SELECT t.tag_name,COUNT(r.tag_id) AS tag_count FROM community_tag t join
+         community_tag_post_relations r on t.tid = r.tag_id
+        <if test="type!=null and type!=''">
+            WHERE r.type=#{type}
+        </if>
+        GROUP BY t.tid,t.tag_name ORDER BY tag_count DESC  LIMIT 10;
+    </select>
+
+    <select id="findRecommend" resultType="java.lang.String">
+        SELECT t.tag_name,COUNT(r.tag_id) AS tag_count FROM community_tag t join
+            community_tag_post_relations r on t.tid = r.tag_id
+        <if test="type!=null and type!=''">
+            WHERE r.type=#{type}
+        </if>
+GROUP BY t.tid,t.tag_name ORDER BY tag_count DESC  LIMIT 6;
+    </select>
+
+
+
+    <select id="getAllTagNames" resultType="java.lang.String">
+        SELECT tag_name FROM community_tag
+    </select>
+    <select id="findTidByName" resultType="java.lang.Long">
+        SELECT tid
+        FROM community_tag
+        WHERE tag_name = #{tagName}
+    </select>
+    <select id="getTagNamesFuzzyMatching" resultType="java.lang.String">
+        SELECT tag_name FROM community_tag WHERE tag_name LIKE CONCAT('%', #{str}, '%')
+    </select>
+    <select id="findTagNameById" resultType="java.lang.String">
+        select tag_name from community_tag where tid=#{tagId}
+    </select>
+
+
+</mapper>

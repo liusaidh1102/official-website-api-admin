@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.admin.UserCourseMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.admin.DO.UserCourse">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="useId" column="use_id" jdbcType="BIGINT"/>
+            <result property="monday" column="monday" jdbcType="VARCHAR"/>
+            <result property="tuesday" column="tuesday" jdbcType="VARCHAR"/>
+            <result property="wednesday" column="wednesday" jdbcType="VARCHAR"/>
+            <result property="thursday" column="thursday" jdbcType="VARCHAR"/>
+            <result property="friday" column="friday" jdbcType="VARCHAR"/>
+            <result property="saturday" column="saturday" jdbcType="VARCHAR"/>
+            <result property="sunday" column="sunday" jdbcType="VARCHAR"/>
+            <result property="courseHtml" column="course_html" jdbcType="LONGVARCHAR"/>
+            <result property="startTime" column="start_time" jdbcType="DATE"/>
+            <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <if test="true">
+            id,use_id,monday,
+            tuesday,wednesday,thursday,
+            friday,saturday,sunday,course_html,start_time,
+            delete_flag
+        </if>
+    </sql>
+
+    <select id="selectAllByUseId" resultMap="BaseResultMap">
+        select
+            id,use_id,monday,
+            tuesday,wednesday,thursday,
+            friday,saturday,sunday,delete_flag
+        from user_course
+        where
+        use_id = #{useId,jdbcType=NUMERIC}
+    </select>
+    <select id="getUserCourseHtml" resultType="weilai.team.officialWebSiteApi.entity.admin.DTO.UserCourseMinDTO">
+        select
+            use_id,course_html,start_time
+        from user_course
+                 left join user
+                           on user_course.use_id = user.id
+        where
+            course_html is not null and
+            grade between year(now())-4 and year(now())
+    </select>
+
+    <update id="updateAllByCourseId">
+        update user_course
+        set monday = #{userCourse.monday,jdbcType=VARCHAR},
+            tuesday = #{userCourse.tuesday,jdbcType=VARCHAR},
+            wednesday = #{userCourse.wednesday,jdbcType=VARCHAR},
+            thursday = #{userCourse.thursday,jdbcType=VARCHAR},
+            friday = #{userCourse.friday,jdbcType=VARCHAR},
+            saturday = #{userCourse.saturday,jdbcType=VARCHAR},
+            sunday = #{userCourse.sunday,jdbcType=VARCHAR}
+        where id = #{userCourse.id,jdbcType=NUMERIC}
+    </update>
+
+    <update id="deleteByUseIdIn">
+        update user_course set delete_flag = 1
+        where
+        use_id in
+        <foreach collection="useIdList" item="item" open="(" close=")" separator=",">
+            #{item,jdbcType=NUMERIC}
+        </foreach>
+    </update>
+
+    <delete id="softDeleteClear">
+        delete from user_course
+        where (monday is null
+            and thursday is null
+            and tuesday is null
+            and wednesday is null
+            and friday is null
+            and saturday is null
+            and sunday is null)
+           or delete_flag = 1;
+    </delete>
+
+    <update id="clearUserCourse">
+        update
+            user_course
+        set monday = null,tuesday = null,wednesday = null,thursday = null,friday = null,saturday = null,sunday = null
+        where course_html is not null
+    </update>
+
+    <update id="clearUserCourseById">
+        update
+            user_course
+        set monday = null,tuesday = null,wednesday = null,thursday = null,friday = null,saturday = null,sunday = null
+        where course_html is not null and use_id = #{userId}
+    </update>
+</mapper>

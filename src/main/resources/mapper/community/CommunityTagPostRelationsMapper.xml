@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.community.CommunityTagPostRelationsMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.community.DO.CommunityTagPostRelations">
+            <id property="relationId" column="relation_id" jdbcType="BIGINT"/>
+            <result property="tagId" column="tag_id" jdbcType="INTEGER"/>
+            <result property="postId" column="post_id" jdbcType="INTEGER"/>
+        <result property="type" column="type" jdbcType="INTEGER"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+<if test="true">
+        relation_id,tag_id,post_id,type
+</if>
+    </sql>
+
+
+    <insert id="addPostTag">
+        INSERT INTO community_tag_post_relations (post_id, tag_id,type)
+        VALUES (#{postId}, #{tid},#{type})
+    </insert>
+
+
+    <delete id="deleteByPostIdAndTid">
+        delete from community_tag_post_relations where tag_id=#{tid} and post_id=#{postId}
+    </delete>
+
+
+    <delete id="deleteByTid">
+        delete from community_tag_post_relations where tag_id=#{tid}
+    </delete>
+
+
+    <select id="findTagIds" resultType="java.lang.Long">
+        SELECT tag_id, COUNT(*) AS tag_count
+        FROM community_tag_post_relations
+        WHERE post_id = #{postId}
+        GROUP BY tag_id
+        ORDER BY tag_count DESC
+        LIMIT 6;
+    </select>
+
+
+    <select id="findPostIdByTid" resultType="java.lang.Long">
+        select post_id from community_tag_post_relations where tag_id=#{tid}
+                                                     <if test="type!=null and type!=''">
+                                                         and type=#{type}
+                                                     </if>
+    </select>
+
+
+    <select id="selectCountByPostId" resultType="java.lang.Integer">
+        select count(tag_id) from community_tag_post_relations where post_id=#{postId}
+    </select>
+
+
+
+    <select id="selectCountByTagId" resultType="java.lang.Integer">
+        select  count(*) from community_tag_post_relations where tag_id=#{tagId}
+    </select>
+
+    <select id="selectTagIdByType" resultType="java.lang.Long">
+        SELECT tag_id
+        FROM community_tag_post_relations
+        <where>
+            <if test="type != null and type != ''">
+                type = #{type}
+            </if>
+        </where>
+    </select>
+    <select id="selectTagsIdByType" resultType="java.lang.Long">
+        SELECT DISTINCT tag_id, COUNT(*) as tag_count
+        FROM community_tag_post_relations
+        <where>
+            <if test="type != null and type != ''">
+                type = #{type}
+            </if>
+        </where>
+        GROUP BY tag_id
+        ORDER BY tag_count DESC;
+    </select>
+
+
+</mapper>

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.postComment.PostCommentAllMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.postComment.DO.PostCommentAll">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="commentId" column="comment_id" jdbcType="BIGINT"/>
+        <result property="commentUser" column="comment_user" jdbcType="BIGINT"/>
+        <result property="pointUser" column="point_user" jdbcType="BIGINT"/>
+        <result property="commentTxt" column="comment_txt" jdbcType="VARCHAR"/>
+        <result property="commentTime" column="comment_time" jdbcType="TIMESTAMP"/>
+        <result property="likeCount" column="like_count" jdbcType="BIGINT"/>
+        <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <if test="true">
+            id,comment_id,comment_user,
+            point_user,comment_txt,comment_time,like_count,
+            delete_flag
+        </if>
+    </sql>
+
+    <update id="updateDeleteFlagByCommentId">
+        update post_comment_all
+        set delete_flag = #{deleteFlag}
+        where comment_id = #{commentId}
+    </update>
+
+    <select id="selectAllByCommentId" resultType="weilai.team.officialWebSiteApi.entity.postComment.VO.CommentAllVO">
+        select * from(
+        select post_comment_all.id                                                              as commentId,
+               comment_user                                                                     as userId,
+               point_user                                                                       as pointUser,
+               comment_txt                                                                      as commentTxt,
+               comment_time                                                                     as commentTime,
+               like_count                                                                       as likeCount,
+               if(comment_user != #{userId}, false, true)                                       as isMyComment
+        from post_comment_all
+        where post_comment_all.comment_id = #{commentId}
+          and post_comment_all.delete_flag = 0
+        group by post_comment_all.id) as t
+        order by commentTime desc
+    </select>
+
+    <select id="selectCommentCount" resultType="java.lang.Integer">
+          select sum(subquery.count_id) as total_count
+   from (
+       select count(id) as count_id
+       from post_comment_all
+       where comment_id in (
+           select id from post_comment_one where post_id = #{postId} and delete_flag = 0
+       ) and delete_flag=0
+       group by comment_id
+   ) subquery;
+    </select>
+
+    <select id="selectIdByCommentId" resultType="java.lang.Long">
+        select id from post_comment_all where comment_id =#{commentId}
+    </select>
+
+    <update id="updateLikeCountById">
+        update post_comment_all
+        set like_count = #{likeCount}
+        where id = #{id,jdbcType=NUMERIC}
+    </update>
+
+    <delete id="softDeleteClear">
+        delete from post_comment_all where delete_flag = 1;
+    </delete>
+</mapper>

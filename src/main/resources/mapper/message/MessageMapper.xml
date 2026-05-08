@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.message.MessageMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.message.DO.Message">
+            <id property="messageId" column="message_id" jdbcType="BIGINT"/>
+            <result property="senderId" column="sender_id" jdbcType="BIGINT"/>
+            <result property="receiverId" column="receiver_id" jdbcType="BIGINT"/>
+            <result property="postId" column="post_id" jdbcType="BIGINT"/>
+            <result property="messageType" column="message_type" jdbcType="INTEGER"/>
+            <result property="content" column="content" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="createdAt" column="created_at" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+
+
+    <sql id="Base_Column_List">
+        message_id,sender_id,receiver_id,
+        message_type,content,status,
+        created_at
+    </sql>
+
+    <select id="selectMessageByReceiverId" resultType="weilai.team.officialWebSiteApi.entity.message.VO.MessageVO">
+        select message_id                                                  as messageId,
+               sender_id                                                   as senderId,
+               (select name from user where id=message.sender_id)          as username,
+               (select head_portrait from user where id=message.sender_id) as headPortrait,
+               post_id                                                     as postId,
+               (select title from post where id=message.post_id)           as postTitle,
+               content                                                     as content,
+               created_at                                                  as createdAt,
+               message_type                                                as messageType
+        from message
+        where receiver_id=#{receiverId}
+          and (
+                        #{messageType} = 1 and message_type in (1, 2)  -- 如果传入的 messageType 是 1，则同时查询 message_type 为 1 或 2 的记录
+                OR (#{messageType} = 3 AND message_type IN (3, 4))  -- 当 messageType 为 3，查询 message_type 为 3 或 4 的记录
+                or message_type = #{messageType}                 -- 否则按照传入的 messageType 查询
+            )
+        order by created_at desc
+    </select>
+
+    <select id="selectMessageByMessageId" resultMap="BaseResultMap">
+        select message_id, sender_id , post_id , receiver_id,message_type,created_at
+        from message
+        where message_id=#{messageId}
+    </select>
+
+    <select id="getNotReadMessageCountByMessageType" resultType="int">
+        select count(*)
+        from message
+        where receiver_id=#{receiverId}
+          and (
+                        #{messageType} = 1 and message_type in (1, 2)  -- 如果传入的 messageType 是 1，则同时查询 message_type 为 1 或 2 的记录
+                OR (#{messageType} = 3 AND message_type IN (3, 4))  -- 当 messageType 为 3，查询 message_type 为 3 或 4 的记录
+                or message_type = #{messageType}                 -- 否则按照传入的 messageType 查询
+            )
+          AND status = 0
+    </select>
+
+    <update id="markUnreadMessagesAsReadByMessageType">
+        UPDATE message
+        SET status = 1
+        WHERE receiver_id = #{receiverId}
+          and (
+                        #{messageType} = 1 and message_type in (1, 2)  -- 如果传入的 messageType 是 1，则同时查询 message_type 为 1 或 2 的记录
+                OR (#{messageType} = 3 AND message_type IN (3, 4))  -- 当 messageType 为 3，查询 message_type 为 3 或 4 的记录
+                or message_type = #{messageType}                 -- 否则按照传入的 messageType 查询
+            )
+          AND status = 0
+    </update>
+    
+    <delete id="deleteAllMessagesByMessageType">
+        delete from message
+        WHERE receiver_id = #{receiverId}
+          and (
+                        #{messageType} = 1 and message_type in (1, 2)  -- 如果传入的 messageType 是 1，则同时查询 message_type 为 1 或 2 的记录
+                OR (#{messageType} = 3 AND message_type IN (3, 4))  -- 当 messageType 为 3，查询 message_type 为 3 或 4 的记录
+                or message_type = #{messageType}                 -- 否则按照传入的 messageType 查询
+            )
+    </delete>
+
+    <delete id="deleteMessageByMessageId">
+        delete from message
+        WHERE message_id=#{messageId}
+    </delete>
+    
+    <select id="getReceiverIdByMessageId" resultType="long">
+        select receiver_id
+        from message
+        where message_id=#{messageId}
+    </select>
+
+    <select id="getMessageFromTimeStamp" resultType="weilai.team.officialWebSiteApi.entity.message.VO.MessageVO">
+        select message_id                                                  as messageId,
+               sender_id                                                   as senderId,
+               (select name from user where id=message.sender_id)          as username,
+               (select head_portrait from user where id=message.sender_id) as headPortrait,
+               post_id                                                     as postId,
+               (select title from post where id=message.post_id)           as postTitle,
+               content                                                     as content,
+               created_at                                                  as createdAt,
+               message_type                                                as messageType
+        from message
+        where receiver_id = #{receiverId}
+        and (
+                #{messageType} = 1 and message_type in (1, 2)  -- 如果传入的 messageType 是 1，则同时查询 message_type 为 1 或 2 的记录
+                OR (#{messageType} = 3 AND message_type IN (3, 4))  -- 当 messageType 为 3，查询 message_type 为 3 或 4 的记录
+                or message_type = #{messageType}                 -- 否则按照传入的 messageType 查询
+            )
+        and created_at > #{timeStamp}
+        order by created_at desc
+        limit #{limit}
+    </select>
+
+    <select id="getMessagePostDTO" resultType="weilai.team.officialWebSiteApi.entity.message.DTO.MessagePostDTO">
+        select message_id                                                  as messageId,
+               sender_id                                                   as senderId,
+               post_id                                                     as postId,
+               (select title from post where id=message.post_id)           as postTitle,
+               content                                                     as content,
+               created_at                                                  as createdAt,
+               message_type                                                as messageType
+        from message
+        where receiver_id = #{receiverId}
+          and (
+                #{messageType} = 1 and message_type in (1, 2)  -- 如果传入的 messageType 是 1，则同时查询 message_type 为 1 或 2 的记录
+                OR (#{messageType} = 3 AND message_type IN (3, 4))  -- 当 messageType 为 3，查询 message_type 为 3 或 4 的记录
+                or message_type = #{messageType}                 -- 否则按照传入的 messageType 查询
+            )
+        order by created_at desc
+    </select>
+
+    <select id="getMessageCountByMessageType" resultType="int">
+        select count(*)
+        from message
+        where receiver_id=#{receiverId}
+          and (
+                        #{messageType} = 1 and message_type in (1, 2)  -- 如果传入的 messageType 是 1，则同时查询 message_type 为 1 或 2 的记录
+                OR (#{messageType} = 3 AND message_type IN (3, 4))  -- 当 messageType 为 3，查询 message_type 为 3 或 4 的记录
+                or message_type = #{messageType}                 -- 否则按照传入的 messageType 查询
+            )
+    </select>
+
+
+
+
+
+
+
+</mapper>

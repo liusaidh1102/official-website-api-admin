@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="weilai.team.officialWebSiteApi.mapper.admin.UserMapper">
+
+    <resultMap id="BaseResultMap" type="weilai.team.officialWebSiteApi.entity.admin.DO.User">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="dingUserId" column="ding_user_id" jdbcType="VARCHAR"/>
+        <result property="username" column="username" jdbcType="VARCHAR"/>
+        <result property="email" column="email" jdbcType="VARCHAR"/>
+        <result property="password" column="password" jdbcType="VARCHAR"/>
+        <result property="name" column="name" jdbcType="VARCHAR"/>
+        <result property="sex" column="sex" jdbcType="VARCHAR"/>
+        <result property="clazz" column="clazz" jdbcType="VARCHAR"/>
+        <result property="grade" column="grade" jdbcType="VARCHAR"/>
+        <result property="group" column="group" jdbcType="VARCHAR"/>
+        <result property="direction" column="direction" jdbcType="VARCHAR"/>
+        <result property="studyId" column="study_id" jdbcType="VARCHAR"/>
+        <result property="headPortrait" column="head_portrait" jdbcType="VARCHAR"/>
+        <result property="phone" column="phone" jdbcType="VARCHAR"/>
+        <result property="qq" column="qq" jdbcType="VARCHAR"/>
+        <result property="graduationDestination" column="graduation_destination" jdbcType="VARCHAR"/>
+        <result property="userDestination" column="user_destination" jdbcType="VARCHAR"/>
+        <result property="lifePhoto" column="life_photo" jdbcType="VARCHAR"/>
+        <result property="lastLoginTime" column="last_login_time" jdbcType="TIMESTAMP"/>
+        <result property="currentLoginTime" column="current_login_time" jdbcType="TIMESTAMP"/>
+        <result property="isInterview" column="is_interview" jdbcType="TIMESTAMP"/>
+        <result property="deleteFlag" column="delete_flag" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        <if test="true">
+            id,ding_user_id,username,
+            email,`password`,`name`,
+            sex,clazz,grade,
+            `group`,direction,study_id,
+            head_portrait,phone,qq,user_destination,
+            graduation_destination,life_photo,last_login_time,current_login_time,is_interview,
+            delete_flag
+        </if>
+    </sql>
+
+    <select id="selectAllByUsernameOrEmail" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from user
+        where
+        username = #{account,jdbcType=VARCHAR} or email = #{account,jdbcType=VARCHAR}
+    </select>
+
+    <update id="updatePasswordByEmail">
+        update user
+        set password = #{password,jdbcType=VARCHAR}
+        where email = #{email,jdbcType=VARCHAR}
+    </update>
+
+    <update id="updateLastLoginTimeByUsernameOrEmail">
+        update user
+        set last_login_time = #{lastLoginTime},current_login_time = #{currentLoginTime}
+        where username = #{account,jdbcType=VARCHAR}
+           OR email = #{account,jdbcType=VARCHAR}
+    </update>
+
+    <select id="getPostByUserId" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.UserPostVO">
+        select postId, viewCount, putTime, title, postAbstract, postLikeCount, commentCount, collectCount from v_user_post where userId = #{userId} order by putTime desc
+    </select>
+
+    <select id="getUserPostAllInfo" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.UserPostInfoVO">
+        select allLikeCount, allPostCount, allCollectCount, allCommentCount from v_user_post_all_info where userId = #{userId}
+    </select>
+
+    <select id="geUserCollect" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.UserPostVO">
+        select postId, collectId, viewCount, putTime, title, postAbstract, postLikeCount, commentCount, collectCount from v_user_post_collect where userId = #{userId} order by putTime desc
+    </select>
+
+    <select id="searchUserLike" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.SearchUserVO">
+        select userId, name, headPortrait, userDestination, postCount, viewCount from v_user_search_like where name like #{content} or userDestination like #{content}
+    </select>
+
+    <select id="getUserList" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.UserListVO">
+        select id, username, name, sex, authority from v_user_permission
+    </select>
+
+    <select id="getTeamAble" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.TeamAbleVO">
+        select grade, `group` from v_user_team_able order by grade desc
+    </select>
+
+    <select id="getUserCount" resultType="long">
+        select count(*) as userCount
+        from user
+        where delete_flag = 0 and `group` is not null
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from user
+    </select>
+
+    <select id="selectAllByGradeAndGroup" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from user
+        where
+        grade = #{grade,jdbcType=VARCHAR}
+        and `group` = #{group,jdbcType=VARCHAR}
+        and delete_flag = 0
+    </select>
+
+    <select id="reachUserLike" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.UserListVO">
+        select user.id,username,name,sex,group_concat(authority separator ',') as authority
+        from user
+        left join user_permission on user.id = user_permission.user_id
+        where
+        delete_flag = 0
+        <if test="authorities != null">
+            and user.id in (
+            select user_id from user_permission where authority in
+            <foreach collection="authorities" open="(" close=")" separator="," item="item">
+                #{item,jdbcType=VARCHAR}
+            </foreach>
+            )
+        </if>
+        and name like #{content}
+        group by user.id
+    </select>
+    
+    <select id="searchUserByNameLike" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.TeamSearchUserVO">
+        select id,name,head_portrait
+        from user
+        where delete_flag = 0 and name like #{content}
+    </select>
+
+    <select id="getGroupByGrade" resultType="integer">
+        select distinct `group` from user where delete_flag = 0 and grade = #{grade}
+    </select>
+
+    <select id="getUsersByGrade" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.TeamSearchUserVO">
+        select id,name from user where delete_flag = 0 and grade = #{grade}
+    </select>
+
+    <update id="modifyManyUser">
+        update user set grade = #{grade},`group` = #{group},clazz = #{clazz}
+        where id in
+        <foreach collection="ids" open="(" close=")" separator="," item="item">
+            #{item,jdbcType=BIGINT}
+        </foreach>
+    </update>
+
+    <delete id="softDeleteClear">
+        delete from user where delete_flag = 1;
+    </delete>
+
+    <select id="selectLifePhotoById" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.UserLifePhoto">
+        select life_photo
+        from user
+        where id = #{id,jdbcType=NUMERIC}
+    </select>
+
+    <select id="selectSummarize" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.SummarizeVO">
+        select allTeamUserCount, salaryYearAll, copyrightCount,
+               lanQiaoCount, javaCurrent, htmlCurrent, examCurrent,
+               workCurrent, userCount, postB, postG, postJ, postT,
+               javaAll, htmlAll
+        from v_summarize;
+    </select>
+
+    <select id="selectSummarizePer" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.SummarizeVO$Per">
+        select grade, salaryYearPerJava, PeopleCountPerJava, salaryYearPerHtml, PeopleCountPerHtml from v_user_grade_per
+    </select>
+
+    <select id="selectSummarizeArea" resultType="weilai.team.officialWebSiteApi.entity.admin.VO.SummarizeVO$Area">
+        select zipcode,peopleCount from v_summarize_zipcode where zipcode is not null;
+    </select>
+
+    <select id="getDingIDByGroup" resultType="weilai.team.officialWebSiteApi.entity.admin.DTO.DingIDDTO">
+        select ding_user_id as dingID,name,`group` from user
+        where `group` in
+              <foreach collection="group" open="(" close=")" separator="," item="item">
+                #{item,jdbcType=BIGINT}
+              </foreach>
+          and ding_user_id is not null
+          and grade between year(now())-1 and year(now())
+          and delete_flag = 0
+    </select>
+
+    <select id="getDingIDAll" resultType="weilai.team.officialWebSiteApi.entity.admin.DTO.DingIDDTO">
+        select ding_user_id as dingID,name,`group`,id as userId from user
+        where ding_user_id is not null
+          and grade between year(now())-1 and year(now())
+          and delete_flag = 0
+    </select>
+
+    <select id="getUserCountByGroup" resultType="long">
+        select count(*) from user
+        where ding_user_id is not null
+          <if test="group != null">
+            and `group` = #{group}
+          </if>
+          and grade between year(now())-1 and year(now())
+          and delete_flag = 0
+    </select>
+
+    <update id="updateUserByDingIdByUserName">
+        update user set ding_user_id = #{DingId} where name = #{name}
+    </update>
+
+    <update id="updateIsInterview">
+        update user set is_interview = #{i} where id = #{userId}
+    </update>
+</mapper>

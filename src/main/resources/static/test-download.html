@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>分片下载</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"] { width: 100%; padding: 8px; box-sizing: border-box; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; cursor: pointer; margin-right: 10px; }
+        button:hover { background-color: #0056b3; }
+        #log { margin-top: 20px; padding: 10px; background: #f4f4f4; border: 1px solid #ddd; height: 300px; overflow-y: auto; font-size: 12px; }
+        .progress-bar { width: 100%; background-color: #e0e0e0; height: 20px; margin-top: 10px; }
+        .progress-fill { height: 100%; background-color: #4caf50; width: 0%; transition: width 0.3s; }
+    </style>
+</head>
+<body>
+
+<h2>文件分片下载</h2>
+
+<div class="input-group">
+    <label for="apiBase">API Base URL:</label>
+    <input type="text" id="apiBase" value="http://localhost:8087">
+</div>
+
+<div class="input-group">
+    <label for="fileMd5">文件 MD5:</label>
+    <input type="text" id="fileMd5" placeholder="请输入已上传文件的MD5">
+</div>
+
+<button onclick="startDownload()">开始/继续下载</button>
+<button onclick="clearDownloadCache()">清空当前缓存</button>
+
+<div class="progress-bar">
+    <div class="progress-fill" id="progressFill"></div>
+</div>
+<p id="statusText">准备就绪</p>
+
+<div id="log"></div>
+
+<script>
+    // ===================== 1. IndexedDB 封装（分片持久化） =====================
+    const DB_NAME = "FileChunkDB";
+    const DB_VERSION = 1;
+    const STORE_NAME = "chunkStore";
+
+    let db = null;
+
+    // 初始化数据库
+    function initDB() {
+        return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, DB_VERSION);
+            req.onupgradeneeded = e => {
+                db = e.target.result;
+                const store = db.createObjectStore(STORE_NAME, { keyPath: "key" });
+                store.createIndex("fileMd5", "fileMd5", { unique: false });
+            };
+            req.onsuccess = e => {
+                db = e.target.result;
+                resolve(db);
+            };
+            req.onerror = e => reject(e);
+        });
+    }
+
+    // 存入分片
+    function saveChunk(fileMd5, chunkIndex, arrayBuffer) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            const store = tx.objectStore(STORE_NAME);
+            store.put({
+                key: `${fileMd5}_${chunkIndex}`,
+                fileMd5,
+                chunkIndex,
+                data: arrayBuffer
+            });
+            tx.oncomplete = () => resolve();
+            tx.onerror = (err) => reject(err);
+        });
+    }
+
+    // 获取同一个文件所有分片
+    function getAllChunks(fileMd5) {
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, "readonly");
+            const store = tx.objectStore(STORE_NAME);
+            const idx = store.index("fileMd5");
+            const req = idx.getAll(fileMd5);
+            req.onsuccess = () => resolve(req.result || []);
+        });
+    }
+
+    // 清空当前文件所有分片缓存
+    function clearFileChunks(fileMd5) {
+        return new Promise((resolve) => {
+            const tx = db.transaction(STORE_NAME, "readwrite");
+            const store = tx.objectStore(STORE_NAME);
+            const idx = store.index("fileMd5");
+            const cursorReq = idx.openCursor(fileMd5);
+            cursorReq.onsuccess = e => {
+                const cursor = e.target.result;
+                if (cursor) {
+                    store.delete(cursor.primaryKey);
+                    cursor.continue();
+                } else resolve();
+            };
+        });
+    }
+
+    // ===================== 2. 工具方法 =====================
+    function log(message) {
+        const logDiv = document.getElementById('log');
+        const time = new Date().toLocaleTimeString();
+        logDiv.innerHTML += `[${time}] ${message}<br>`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function updateProgress(percent) {
+        document.getElementById('progressFill').style.width = percent + '%';
+        document.getElementById('statusText').innerText = `进度: ${percent.toFixed(2)}%`;
+    }
+
+    // 保存进度
+    function saveProgress(fileMd5, finishedIndexList) {
+        localStorage.setItem(`download_progress_${fileMd5}`, JSON.stringify({
+            fileMd5, finishedIndexList
+        }));
+    }
+
+    // 读取进度
+    function getProgress(fileMd5) {
+        const str = localStorage.getItem(`download_progress_${fileMd5}`);
+        return str ? JSON.parse(str) : { finishedIndexList: [] };
+    }
+
+    // 清空缓存
+    async function clearDownloadCache() {
+        const fileMd5 = document.getElementById('fileMd5').value;
+        if (!fileMd5) return alert("请输入MD5");
+        await clearFileChunks(fileMd5);
+        localStorage.removeItem(`download_progress_${fileMd5}`);
+        log("已清空缓存");
+        updateProgress(0);
+    }
+
+    // ===================== 3. 核心下载（已修复 BUG） =====================
+    async function startDownload() {
+        await initDB();
+        const apiBase = document.getElementById('apiBase').value;
+        const fileMd5 = document.getElementById('fileMd5').value;
+
+        if (!fileMd5) return alert('请输入文件 MD5');
+
+        try {
+            log("初始化下载...");
+            const initRes = await fetch(`${apiBase}/download/multipart/init`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileMd5 })
+            });
+
+            const initData = await initRes.json();
+            if (initData.code !== 3420) throw new Error(initData.msg || "初始化失败");
+
+            const { fileName, urlList, fileSize } = initData.data;
+            const totalChunks = urlList.length;
+
+            log(`文件：${fileName}，总分片：${totalChunks}`);
+
+            // --- 修复点 1：读取已完成分片 ---
+            const progress = getProgress(fileMd5);
+            const finishedSet = new Set(progress.finishedIndexList);
+
+            // --- 修复点 2：从 IndexedDB 里统计真实已下载大小 ---
+            const localChunks = await getAllChunks(fileMd5);
+            let downloadedSize = 0;
+            localChunks.forEach(c => { downloadedSize += c.data.byteLength; });
+
+            log(`已下载：${finishedSet.size}/${totalChunks} 分片`);
+            
+            // 初始化进度条：显示已下载的百分比
+            updateProgress((downloadedSize / fileSize) * 100);
+
+            const needList = urlList.filter(item => !finishedSet.has(item.chunkIndex));
+            const concurrency = 5;
+
+            for (let i = 0; i < needList.length; i += concurrency) {
+                const batch = needList.slice(i, i + concurrency);
+
+                const promises = batch.map(async chunk => {
+                    try {
+                        const res = await fetch(chunk.downloadUrl);
+                        if (!res.ok) throw new Error(`HTTP 错误`);
+                        const buffer = await res.arrayBuffer();
+
+                        await saveChunk(fileMd5, chunk.chunkIndex, buffer);
+                        finishedSet.add(chunk.chunkIndex);
+                        downloadedSize += buffer.byteLength;
+
+                        saveProgress(fileMd5, Array.from(finishedSet));
+                        updateProgress((downloadedSize / fileSize) * 100);
+                        // 动态更新日志中的分片数目
+                        document.getElementById('statusText').innerText = `进度: ${((downloadedSize / fileSize) * 100).toFixed(2)}% (${finishedSet.size}/${totalChunks} 分片)`;
+                        log(`分片 ${chunk.chunkIndex} 下载成功`);
+                    } catch (e) {
+                        log(`分片 ${chunk.chunkIndex} 下载失败，将重试：` + e.message);
+                        throw e;
+                    }
+                });
+
+                await Promise.all(promises);
+            }
+
+            // 全部完成
+            if (finishedSet.size === totalChunks) {
+                log("开始合并文件...");
+                const all = await getAllChunks(fileMd5);
+                // 强制转换为数字进行排序，防止字符串排序错误 (如 "10" 排在 "2" 前面)
+                all.sort((a, b) => Number(a.chunkIndex) - Number(b.chunkIndex));
+                
+                // 提取数据并合并
+                const bufferList = all.map(item => item.data);
+                const blob = new Blob(bufferList, { type: 'application/octet-stream' });
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                log("下载完成！");
+                updateProgress(100);
+
+                await clearFileChunks(fileMd5);
+                localStorage.removeItem(`download_progress_${fileMd5}`);
+                log("已清理缓存");
+            } else {
+                log("暂停成功，刷新可续传！");
+            }
+
+        } catch (err) {
+            log("错误：" + err.message);
+            console.error(err);
+        }
+    }
+</script>
+
+</body>
+</html>

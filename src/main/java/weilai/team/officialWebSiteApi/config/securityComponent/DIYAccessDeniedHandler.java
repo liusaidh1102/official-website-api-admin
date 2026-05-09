@@ -9,6 +9,10 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+
+/**
+ * 定义用户的权限不足时返回的错误信息   403
+ */
 @Component
 public class DIYAccessDeniedHandler implements AccessDeniedHandler {
     @Override

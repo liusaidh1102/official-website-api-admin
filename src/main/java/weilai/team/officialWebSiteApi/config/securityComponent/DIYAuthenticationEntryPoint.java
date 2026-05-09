@@ -11,6 +11,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Objects;
 
+/**
+ * 访问受保护资源时，如果用户没有认证，会到这里处理请求
+ */
 @Component
 public class DIYAuthenticationEntryPoint implements AuthenticationEntryPoint {
     @Override

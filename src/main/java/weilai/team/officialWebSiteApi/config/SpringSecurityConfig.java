@@ -104,8 +104,10 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
 
 
     //设置加密方式
+    // 登录时Security会自动去调用这个Bean的.match()方法，进行密码的判断
     @Bean
     public PasswordEncoder bCryptPasswordEncoder() {
+        // 使用 BCrypt 加密算法，强度为 10（默认值），可以根据需要调整
         return new BCryptPasswordEncoder(10);
     }
 

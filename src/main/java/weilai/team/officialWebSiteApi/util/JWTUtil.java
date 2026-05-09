@@ -31,6 +31,7 @@ public class JWTUtil {
                     .setExpiration(new Date(System.currentTimeMillis() + outTime))
                     .signWith(SignatureAlgorithm.HS256,JWTKey)
                     .compact();
+        System.out.printf("jwt生成的令牌：{}", jwtString);
             return encrypt(jwtString);
     }
 

@@ -28,6 +28,7 @@ public class DIYUserDetailsService implements UserDetailsService {
         if(Objects.isNull(user)){
             throw new UsernameNotFoundException(account + " 不存在!");
         }
+        // 设置权限信息
         user.setAuth(userPermissionMapper.getAuthorityByUserId(user.getId()));
         return user;
     }

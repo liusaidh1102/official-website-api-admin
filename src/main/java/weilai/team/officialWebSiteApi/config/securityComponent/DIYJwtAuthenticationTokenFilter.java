@@ -2,6 +2,7 @@ package weilai.team.officialWebSiteApi.config.securityComponent;
 
 import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -24,6 +25,7 @@ public class DIYJwtAuthenticationTokenFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        System.out.println("JwtFilter 执行 一次");
         //获取token
         String token = request.getHeader(Values.TOKEN_PARAM_NAME);
 
@@ -87,10 +89,13 @@ public class DIYJwtAuthenticationTokenFilter extends OncePerRequestFilter {
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(user,null,user.getAuthorities());
 
-        //存入SecurityContextHolder中，同一个请求的 SecurityContextHolder 相同，
-        // 不同的请求的 SecurityContextHolder 不相同
-        //因此，退出登录时，不用删除 SecurityContextHolder 中的值
-        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        // SecurityContextHolder使用ThreadLocal存储安全上下文信息，确保每个线程都有独立的安全上下文，避免多线程环境下的安全问题。
+        // 并且FilterChainProxy会在每次请求结束后清除当前线程的安全上下文，确保不会出现线程安全问题。
+        // 后续的过滤器判断用户是否认证时，直接从 SecurityContextHolder 中获取用户信息，如果没有，就说明未认证，如果有，就说明已认证
+        // 创建一个空的，避免多线程竞争（https://springdoc.cn/spring-security/servlet/authentication/architecture.html#servlet-authentication-securitycontextholder）
+        SecurityContext emptyContext = SecurityContextHolder.createEmptyContext();
+        emptyContext.setAuthentication(authenticationToken);
+//        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
         //重新定义用户凭据的过期时间，保证用户在登录过程中，不会出现token过期的现象
         redisUtil.reSetOutTime(Values.REDIS_TOKEN_ID + username,Values.OUT_TIME, TimeUnit.MILLISECONDS);

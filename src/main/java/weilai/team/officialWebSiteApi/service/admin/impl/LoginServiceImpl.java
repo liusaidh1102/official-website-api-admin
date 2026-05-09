@@ -5,6 +5,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import weilai.team.officialWebSiteApi.entity.admin.DO.User;
 import weilai.team.officialWebSiteApi.entity.admin.DTO.AccountPasswordDTO;
@@ -17,10 +18,7 @@ import org.springframework.stereotype.Service;
 import weilai.team.officialWebSiteApi.util.*;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -63,7 +61,7 @@ public class LoginServiceImpl implements LoginService {
         //创建认证对象
         UsernamePasswordAuthenticationToken authenticationToken =
                 new UsernamePasswordAuthenticationToken(accountPasswordDTO.getAccount(),accountPasswordDTO.getPassword());
-        //进行认证
+        //进行认证，底层交给DIYUserDetailsService.loadUserByUsername()方法来加载用户信息，并进行密码比对
         Authentication authenticate = authenticationManager.authenticate(authenticationToken);
 
         if(Objects.isNull(authenticate)){
@@ -105,7 +103,7 @@ public class LoginServiceImpl implements LoginService {
 
         //存入token的唯一表示
         boolean a = redisUtil.setRedisStringWithOutTime(Values.REDIS_TOKEN_ID + username,tokenId,Values.OUT_TIME);
-        //将用户信息存入redis中，以 token为键，用户信息对象的json为值
+        //将用户信息存入redis中，以 用户id 为键，用户信息对象的json为值
         boolean b = redisUtil.setRedisObjectWithOutTime(Values.REDIS_TOKEN_PREFIX + username, user, Values.OUT_TIME);
 
 

@@ -10,14 +10,17 @@ public final class Values {
      */
 //    public static final String KEY = "dx5frb8yn67klop2dzqpmdiencsurv5*";
     public static final String KEY = "dxf867lodqdisr5*";
-    public static final String JWT_KEY = "81e78eac24ab4a2d8eb28fd8038eaf42";
+    public static final String JWT_KEY = "81e78eac24ab4a2d8eb28fd8038eaf42";// 32位
     public static final Long OUT_TIME = 7200000L; //token的过期时间120分钟(redis 和 jwt 的过期时间一致)
+    public static final Long REFRESH_TOKEN_OUT_TIME = 7 * 24 * 60 * 60 * 1000L; //token的过期时间7 天(redis 和 jwt 的过期时间一致)
+
     public static final String TOKEN_PARAM_NAME = "Authorization"; //获取token的参数名
     public static final String TOKEN_PREFIX = "Bearer"; //获取token的参数名
     public static final String REDIS_TOKEN_PREFIX = "token: "; // 存储在redis中的token的前缀
 
     // 存储在redis中的token的唯一标识，保证同一时间，只能有一个账号登录
     public static final String REDIS_TOKEN_ID = "token_id: ";
+    public static final String REDIS_TOKEN_REFRESH = "token_refresh: ";
 
     //邮箱格式
     public static final String EMAIL_FORMAT = "^\\w{3,}(\\.\\w+)*@[A-z0-9]+(\\.[A-z]{2,5}){1,2}$";

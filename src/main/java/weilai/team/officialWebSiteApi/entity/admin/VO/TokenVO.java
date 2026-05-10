@@ -14,15 +14,18 @@ import java.util.List;
 @Data
 public class TokenVO {
 
-    private String token;
+    private String accessToken;
+
+    private String refreshToken;
 
     private Long userId;
 
     private List<String> permissions;
 
-    public TokenVO(String token,Long userId,List<String> permissions) {
+    public TokenVO(String accessToken,String refreshToken,Long userId,List<String> permissions) {
         this.userId = userId;
-        this.token = token;
+        this.accessToken = accessToken;
+        this.refreshToken = refreshToken;
         this.permissions = permissions;
     }
 }

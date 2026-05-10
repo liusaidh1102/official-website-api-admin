@@ -70,12 +70,12 @@ public class LoginServiceImpl implements LoginService {
 
         //防护，判断是否存在有效token，如果不存在，就继续发送token，
         //如果存在，说明已经登录过了，该账号已经储存在redis里面了，因此，删除有效的token，重新登录
-        User t = redisUtil.getRedisObject(Values.REDIS_TOKEN_PREFIX + tempUser.getUsername(), User.class);
-        if(t != null){
-            boolean a = redisUtil.deleteRedis(Values.REDIS_TOKEN_ID + tempUser.getUsername());
-            boolean b = redisUtil.deleteRedis(Values.REDIS_TOKEN_PREFIX + tempUser.getUsername());
-            return a || b ? ResponseResult.LOGIN_FAIL_NOT_ONE : ResponseResult.SERVICE_ERROR;
-        }
+//        User t = redisUtil.getRedisObject(Values.REDIS_TOKEN_PREFIX + tempUser.getUsername(), User.class);
+//        if(t != null){
+//            boolean a = redisUtil.deleteRedis(Values.REDIS_TOKEN_ID + tempUser.getUsername());
+//            boolean b = redisUtil.deleteRedis(Values.REDIS_TOKEN_PREFIX + tempUser.getUsername());
+//            return a || b ? ResponseResult.LOGIN_FAIL_NOT_ONE : ResponseResult.SERVICE_ERROR;
+//        }
 
         //认证通过，获取用户信息
         User user = (User) authenticate.getPrincipal();
@@ -98,19 +98,24 @@ public class LoginServiceImpl implements LoginService {
 
         //通过 username 生成 token 并返回给前端
         String username = user.getUsername();
-        String tokenId = Long.toString(System.currentTimeMillis());
-        String token = JWTUtil.createToken(username + "$" + tokenId);
+        Map<String, String> accessToken = JWTUtil.createToken(username);
+        //
+        Map<String, String> refreshToken = JWTUtil.createToken(username);
+        String refreshTokenId = Long.toString(System.currentTimeMillis());
+
 
         //存入token的唯一表示
-        boolean a = redisUtil.setRedisStringWithOutTime(Values.REDIS_TOKEN_ID + username,tokenId,Values.OUT_TIME);
+        boolean access = redisUtil.setRedisStringWithOutTime(Values.REDIS_TOKEN_ID + username, accessToken.get("jti"), Values.OUT_TIME);
+        boolean refresh = redisUtil.setRedisStringWithOutTime(Values.REDIS_TOKEN_REFRESH + username, refreshToken.get("jti"), Values.REFRESH_TOKEN_OUT_TIME);
+
         //将用户信息存入redis中，以 用户id 为键，用户信息对象的json为值
         boolean b = redisUtil.setRedisObjectWithOutTime(Values.REDIS_TOKEN_PREFIX + username, user, Values.OUT_TIME);
 
 
         //封装返回数据信息
-        TokenVO tokenVO = new TokenVO(token,user.getId(),user.getAuth());
+        TokenVO tokenVO = new TokenVO(accessToken.get("token"), refreshToken.get("token"), user.getId(), user.getAuth());
 
-        return a && b ? ResponseResult.LOGIN_SUCCESS.put(tokenVO) : ResponseResult.SERVICE_ERROR;
+        return access && b && refresh ? ResponseResult.LOGIN_SUCCESS.put(tokenVO) : ResponseResult.SERVICE_ERROR;
     }
 
     @Override

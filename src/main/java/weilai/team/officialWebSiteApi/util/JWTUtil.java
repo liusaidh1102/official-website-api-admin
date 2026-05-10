@@ -7,8 +7,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Base64;
-import java.util.Date;
+import java.util.*;
 
 public class JWTUtil {
     private static final String key = Values.KEY;
@@ -23,16 +22,22 @@ public class JWTUtil {
      * @return 表示加密的 JWT 令牌的字符串。
      *
      */
-    public static String createToken(String value){
+    public static Map<String, String> createToken(String value){
         JwtBuilder jwtBuilder = Jwts.builder();
         Long outTime = Values.OUT_TIME;
+        String jti = UUID.randomUUID().toString(); // 生成唯一的JWT ID
         String jwtString = jwtBuilder
                     .setSubject(value)
+                    .setId(jti) // 设置jti
                     .setExpiration(new Date(System.currentTimeMillis() + outTime))
                     .signWith(SignatureAlgorithm.HS256,JWTKey)
                     .compact();
         System.out.printf("jwt生成的令牌：{}", jwtString);
-            return encrypt(jwtString);
+//            return encrypt(jwtString);
+        Map<String, String> map = new HashMap<>();
+        map.put("token", jwtString);
+        map.put("jti", jti);
+        return map;
     }
 
 

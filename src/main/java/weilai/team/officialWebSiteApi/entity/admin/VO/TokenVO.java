@@ -16,16 +16,16 @@ public class TokenVO {
 
     private String accessToken;
 
-    private String refreshToken;
+//    private String refreshToken;
 
     private Long userId;
 
     private List<String> permissions;
 
-    public TokenVO(String accessToken,String refreshToken,Long userId,List<String> permissions) {
+    public TokenVO(String accessToken,Long userId,List<String> permissions) {
         this.userId = userId;
         this.accessToken = accessToken;
-        this.refreshToken = refreshToken;
+//        this.refreshToken = refreshToken;
         this.permissions = permissions;
     }
 }

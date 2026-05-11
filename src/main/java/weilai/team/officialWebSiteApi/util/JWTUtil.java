@@ -22,9 +22,8 @@ public class JWTUtil {
      * @return 表示加密的 JWT 令牌的字符串。
      *
      */
-    public static Map<String, String> createToken(String value){
+    public static Map<String, String> createToken(String value,Long outTime){
         JwtBuilder jwtBuilder = Jwts.builder();
-        Long outTime = Values.OUT_TIME;
         String jti = UUID.randomUUID().toString(); // 生成唯一的JWT ID
         String jwtString = jwtBuilder
                     .setSubject(value)
@@ -55,12 +54,29 @@ public class JWTUtil {
      *         声明作为 {@link Claims} 对象返回。
      */
     public static String getInformation(String token){
-        String JwtToken = decrypt(token);
         Claims body = Jwts.parser()
                 .setSigningKey(JWTKey)
-                .parseClaimsJws(JwtToken)
+                .parseClaimsJws(token)
                 .getBody();
         return body.getSubject();
+    }
+
+    /**
+     * 从给定的 JWT 令牌中检索 JTI 和 Subject 信息。
+     *
+     * @param token 用于检索信息的 JWT 令牌。
+     * @return 包含 JTI 和 Subject 的 Map 对象。
+     */
+    public static Map<String, Object> getJtiAndSubject(String token){
+        Claims body = Jwts.parser()
+                .setSigningKey(JWTKey)
+                .parseClaimsJws(token)
+                .getBody();
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("jti", body.getId());      // JWT ID
+        result.put("subject", body.getSubject()); // Subject
+        return result;
     }
 
 

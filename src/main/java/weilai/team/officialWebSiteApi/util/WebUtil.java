@@ -1,6 +1,8 @@
 package weilai.team.officialWebSiteApi.util;
 
 import com.alibaba.fastjson2.JSON;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.poi.ss.formula.functions.T;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -27,4 +29,20 @@ public class WebUtil {
             LogUtil.Error("响应体写入错误！",e);
         }
     }
+
+    /**
+     * 直接在过滤器中返回错误信息给前端
+     */
+    private static void responseError(HttpServletResponse response, ResponseResult result) throws Exception {
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(result.getCode());
+        String json = new ObjectMapper().writeValueAsString(result);
+        response.getWriter().write(json);
+        response.getWriter().flush();
+    }
+
+
+
+
+
 }

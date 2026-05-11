@@ -6,6 +6,7 @@ import weilai.team.officialWebSiteApi.entity.admin.VO.TokenVO;
 import weilai.team.officialWebSiteApi.util.ResponseResult;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
 * @author 王科林
@@ -19,7 +20,7 @@ public interface LoginService {
      * @param accountPasswordDTO 用户名密码
      * @return 登录结果
      */
-    ResponseResult<?> login(AccountPasswordDTO accountPasswordDTO);
+    ResponseResult<?> login(AccountPasswordDTO accountPasswordDTO, HttpServletResponse response);
 
     /**
      * 发送邮箱验证码
@@ -38,9 +39,18 @@ public interface LoginService {
     /**
      * 退出登录
      * @param request 当前用户的信息
+     * @param response HTTP响应对象，用于清除Cookie
      * @return 退出结果
      */
-    ResponseResult<?> logout(HttpServletRequest request);
+    ResponseResult<?> logout(HttpServletRequest request, HttpServletResponse response);
+
+    /**
+     * 使用refreshToken刷新accessToken
+     * @param refreshToken 刷新令牌
+     * @param response HTTP响应对象，用于设置Cookie
+     * @return 新的token信息
+     */
+    ResponseResult<?> refreshToken(String refreshToken, HttpServletResponse response);
 
     /**
      * 获取概况信息

@@ -9,8 +9,11 @@ import weilai.team.officialWebSiteApi.service.admin.LoginService;
 import weilai.team.officialWebSiteApi.service.admin.annotation.AutoLog;
 import weilai.team.officialWebSiteApi.service.admin.annotation.CurrentLimiting;
 import weilai.team.officialWebSiteApi.util.ResponseResult;
+import weilai.team.officialWebSiteApi.util.Values;
+
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 
 @RestController
@@ -26,8 +29,8 @@ public class LoginController {
     @CurrentLimiting
     @ApiOperation("登录")
     @PostMapping("/login")
-    public synchronized ResponseResult<?> login(@Valid @RequestBody AccountPasswordDTO accountPasswordDTO){
-        return loginService.login(accountPasswordDTO);
+    public synchronized ResponseResult<?> login(@Valid @RequestBody AccountPasswordDTO accountPasswordDTO, HttpServletResponse response){
+        return loginService.login(accountPasswordDTO,response);
     }
 
     @AutoLog
@@ -51,9 +54,33 @@ public class LoginController {
     @AutoLog
     @ApiOperation("注销登录")
     @DeleteMapping("/logout")
-    public ResponseResult<?> logout(HttpServletRequest request){
-        return loginService.logout(request);
+    public ResponseResult<?> logout(HttpServletRequest request, HttpServletResponse response){
+        return loginService.logout(request, response);
     }
+
+    @AutoLog
+    @CurrentLimiting
+    @ApiOperation("刷新token")
+    @PostMapping("/refreshToken")
+    public ResponseResult<?> refreshToken(HttpServletRequest request, HttpServletResponse response){
+        // 从Cookie中获取refreshToken
+        String refreshToken = null;
+        if (request.getCookies() != null) {
+            for (javax.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("refresh_token".equals(cookie.getName())) {
+                    refreshToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+        
+        if (org.apache.commons.lang3.StringUtils.isBlank(refreshToken)) {
+            return ResponseResult.Unauthorized;
+        }
+        
+        return loginService.refreshToken(refreshToken, response);
+    }
+
 
     @AutoLog
     @ApiOperation("获取概况信息")

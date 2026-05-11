@@ -35,7 +35,7 @@ public class UserUtil {
             return null;
         }
 
-        String username = JWTUtil.getInformation(token.split(" ")[1]).split("\\$")[0];
-        return redisUtil.getRedisObject(Values.REDIS_TOKEN_PREFIX + username, User.class);
+        String studentId = JWTUtil.getInformation(tokenSplit[1]);
+        return redisUtil.getRedisObject(Values.REDIS_TOKEN_PREFIX + studentId, User.class);
     }
 }

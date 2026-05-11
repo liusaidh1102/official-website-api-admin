@@ -21,6 +21,9 @@ public final class Values {
     // 存储在redis中的token的唯一标识，保证同一时间，只能有一个账号登录
     public static final String REDIS_TOKEN_ID = "token_id: ";
     public static final String REDIS_TOKEN_REFRESH = "token_refresh: ";
+    
+    // Token黑名单前缀
+    public static final String TOKEN_BLACKLIST_PREFIX = "token_blacklist: ";
 
     //邮箱格式
     public static final String EMAIL_FORMAT = "^\\w{3,}(\\.\\w+)*@[A-z0-9]+(\\.[A-z]{2,5}){1,2}$";

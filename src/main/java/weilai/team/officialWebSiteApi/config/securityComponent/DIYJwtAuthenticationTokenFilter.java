@@ -1,6 +1,8 @@
 package weilai.team.officialWebSiteApi.config.securityComponent;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,8 +16,8 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class DIYJwtAuthenticationTokenFilter extends OncePerRequestFilter {
@@ -26,82 +28,78 @@ public class DIYJwtAuthenticationTokenFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         System.out.println("JwtFilter 执行 一次");
-        //获取token
         String token = request.getHeader(Values.TOKEN_PARAM_NAME);
 
-        //判断是否携带token
-        if(MyString.isNull(token)){
-            //如果token不存在，直接放行
+        // 1. 无 token → 直接放行，交给后面 Spring Security 处理
+        if (MyString.isNull(token)) {
             filterChain.doFilter(request, response);
             return;
         }
 
         String[] tokenSplit = token.split(" ");
-        if(tokenSplit.length != 2 || !Values.TOKEN_PREFIX.equals(tokenSplit[0])){
-            //如果token不合法，直接放行
-            filterChain.doFilter(request, response);
+        // 2. token 格式错误 → 直接返回前端，不抛异常
+        if (tokenSplit.length != 2 || !Values.TOKEN_PREFIX.equals(tokenSplit[0])) {
+            responseError(response, ResponseResult.Unauthorized);
             return;
         }
 
-        String info = null;
-        try{
-            //解析token
-            info = JWTUtil.getInformation(tokenSplit[1]);
-        } catch (ExpiredJwtException e){
-            //如果token超时，就直接放行
-            filterChain.doFilter(request, response);
+        Map<String, Object> infoMap;
+        try {
+            infoMap = JWTUtil.getJtiAndSubject(tokenSplit[1]);
+        } catch (ExpiredJwtException e) {
+            // 3. token 过期 → 直接返回
+            responseError(response, ResponseResult.LOGIN_FILE); // 你自己的过期枚举
+            return;
+        } catch (JwtException e) {
+            // 4. token 无效 → 直接返回
+            responseError(response, ResponseResult.Unauthorized);
             return;
         }
 
-        //根据解析的内容，继续解析分离出信息
-        String[] split = info.split("\\$");
-        if(split.length != 2) {
-            //如果信息错误，直接放行
-            filterChain.doFilter(request, response);
+        String studentId = (String) infoMap.get("subject");
+        String jti = (String) infoMap.get("jti");
+        
+        // 5. 检查token是否在黑名单中
+        String blacklistKey = Values.TOKEN_BLACKLIST_PREFIX + jti;
+        String blacklistValue = redisUtil.getRedisString(blacklistKey);
+        if("blacklisted".equals(blacklistValue)){
+            responseError(response, ResponseResult.Unauthorized);
             return;
         }
-        String username = split[0];
-        String currentTokenId = split[1];
+        
+        String redisJti = redisUtil.getRedisString(Values.REDIS_TOKEN_ID + studentId);
 
-        //从redis中获取token的id
-        String tokenId = redisUtil.getRedisString(Values.REDIS_TOKEN_ID + username);
-
-        //判断tokenId是否存在相同
-        if(!currentTokenId.equals(tokenId)){
-            //如果tokenId不相同，说明已将有账号登录过了，不予许访问
-            filterChain.doFilter(request, response);
+        // 6. 账号在别处登录 → 直接返回（关键！）
+        if (!jti.equals(redisJti)) {
+            responseError(response, ResponseResult.LOGIN_FAIL_NOT_ONE);
             return;
         }
 
-        //从redis中获取用户信息
-        String redisKey = Values.REDIS_TOKEN_PREFIX + username;
+        String redisKey = Values.REDIS_TOKEN_PREFIX + studentId;
         User user = redisUtil.getRedisObject(redisKey, User.class);
 
-        //判断用户是否存在
-        if(Objects.isNull(user)){
-            //如果用户不存在，不予许访问，未认证
-            filterChain.doFilter(request, response);
+        // 7. 用户信息不存在
+        if (Objects.isNull(user)) {
+            responseError(response, ResponseResult.LOGIN_FILE);
             return;
         }
 
-        //如果是已经认证的状态，调用三个参数的构造器，就把用户的详细信息放到第一个参数，第二个参数为 null
-        //如果是第一次登陆（未认证状态），调用两个参数的构造器，就将用户的账号放到第一个参数，密码放到第二个参数
+        // 认证成功，存入上下文
         UsernamePasswordAuthenticationToken authenticationToken =
-                new UsernamePasswordAuthenticationToken(user,null,user.getAuthorities());
+                new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
-        // SecurityContextHolder使用ThreadLocal存储安全上下文信息，确保每个线程都有独立的安全上下文，避免多线程环境下的安全问题。
-        // 并且FilterChainProxy会在每次请求结束后清除当前线程的安全上下文，确保不会出现线程安全问题。
-        // 后续的过滤器判断用户是否认证时，直接从 SecurityContextHolder 中获取用户信息，如果没有，就说明未认证，如果有，就说明已认证
-        // 创建一个空的，避免多线程竞争（https://springdoc.cn/spring-security/servlet/authentication/architecture.html#servlet-authentication-securitycontextholder）
         SecurityContext emptyContext = SecurityContextHolder.createEmptyContext();
         emptyContext.setAuthentication(authenticationToken);
-//        SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+        SecurityContextHolder.setContext(emptyContext);
 
-        //重新定义用户凭据的过期时间，保证用户在登录过程中，不会出现token过期的现象
-        redisUtil.reSetOutTime(Values.REDIS_TOKEN_ID + username,Values.OUT_TIME, TimeUnit.MILLISECONDS);
-        redisUtil.reSetOutTime(redisKey,Values.OUT_TIME, TimeUnit.MILLISECONDS);
-
-        //放行
+        // 放行
         filterChain.doFilter(request, response);
+    }
+
+    // 工具方法：直接返回 JSON 给前端
+    private void responseError(HttpServletResponse response, ResponseResult result) throws IOException {
+        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(result.getCode());
+        new ObjectMapper().writeValue(response.getWriter(), result);
     }
 }

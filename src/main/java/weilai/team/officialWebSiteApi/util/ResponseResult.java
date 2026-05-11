@@ -183,6 +183,13 @@ public class ResponseResult<T>{
     public static final ResponseResult<?> ERROR_INSERT = new ResponseResult<>(3415,"数据插入失败，请确保索引的唯一性","");
     public static final ResponseResult<?> FILE_LOAD_ERROR = new ResponseResult<>(3416,"文件读取失败","");
 
+    /*
+    3420以上的状态码:文件下载的返回验证
+     */
+    public static final ResponseResult<?> DOWNLOAD_INIT_SUCCESS = new ResponseResult<>(3420,"分片下载初始化成功","");
+    public static final ResponseResult<?> DOWNLOAD_INIT_FAIL = new ResponseResult<>(3421,"分片下载初始化失败","");
+    public static final ResponseResult<?> DOWNLOAD_FILE_NOT_FOUND = new ResponseResult<>(3422,"下载文件不存在","");
+
     /*钉钉状态码*/
     public static final ResponseResult<?> DING_ERROR_DING_LONG = new ResponseResult<>(7000,"钉钉accessToken获取失败","");
 

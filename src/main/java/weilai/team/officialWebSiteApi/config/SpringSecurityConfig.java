@@ -36,6 +36,12 @@ public class SpringSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/index/logout","/index/getSummarize").authenticated() //登出接口只允许登录访问
                 .antMatchers("/index/**","/recruit/user/**").anonymous() //登录接口只允许匿名访问
 
+                //文件下载接口 - 无需登录即可访问
+                .antMatchers("/download/multipart/init").permitAll()
+                
+                //测试页面 - 无需登录即可访问
+                .antMatchers("/test-download.html").permitAll()
+
                 //用户的个人信息
                 .antMatchers("/user/**").authenticated() //用户信息接口只允许登录访问
 

@@ -368,4 +368,108 @@ public class MinioUtil {
             return null;
         }
     }
+
+    /**
+     * 生成分片下载的预签名 URL 列表
+     *
+     * @param objectName 文件对象名称
+     * @param fileSize   文件总大小（字节）
+     * @param chunkSize  每个分片的大小（字节），默认 5MB
+     * @return 包含分片 URL 列表和元数据的 Map
+     */
+    public Map<String, Object> generateMultipartDownloadUrls(String objectName, Long fileSize, Long chunkSize) {
+        log.info("开始生成分片下载URL: objectName={}, fileSize={}, chunkSize={}", objectName, fileSize, chunkSize);
+        
+        // 默认分片大小为 5MB
+        if (chunkSize == null || chunkSize <= 0) {
+            chunkSize = 5 * 1024 * 1024L; // 5MB
+        }
+        
+        // 计算分片数量
+        int chunkNum = (int) Math.ceil((double) fileSize / chunkSize);
+        
+        Map<String, Object> result = new HashMap<>();
+        List<Map<String, Object>> urlList = new ArrayList<>();
+        
+        try {
+            String bucketName = minioConfigProperties.getBucketName();
+            
+            // 为每个分片生成预签名 URL
+            for (int i = 0; i < chunkNum; i++) {
+                long startByte = (long) i * chunkSize;
+                long endByte = Math.min(startByte + chunkSize - 1, fileSize - 1);
+                
+                // 设置 Range 头，指定下载范围
+                Map<String, String> reqParams = new HashMap<>();
+                // MinIO 支持通过 GET 参数传递 range
+                reqParams.put("range", "bytes=" + startByte + "-" + endByte);
+                
+                String presignedUrl = customMinioClient.getPresignedObjectUrl(
+                        GetPresignedObjectUrlArgs.builder()
+                                .method(Method.GET)
+                                .bucket(bucketName)
+                                .object(objectName)
+                                .expiry(expiry, TimeUnit.DAYS)
+                                .extraQueryParams(reqParams)
+                                .build());
+                
+                // 创建分片信息对象
+                Map<String, Object> chunkInfo = new HashMap<>();
+                chunkInfo.put("downloadUrl", presignedUrl);
+                chunkInfo.put("chunkIndex", i);
+                chunkInfo.put("startByte", startByte);
+                chunkInfo.put("endByte", endByte);
+                chunkInfo.put("size", endByte - startByte + 1);
+                
+                urlList.add(chunkInfo);
+            }
+            
+            result.put("urlList", urlList);
+            result.put("chunkNum", chunkNum);
+            result.put("chunkSize", chunkSize);
+            result.put("fileSize", fileSize);
+            result.put("objectName", objectName);
+            
+            log.info("分片下载URL生成成功: 共{}个分片", chunkNum);
+            return result;
+            
+        } catch (Exception e) {
+            log.error("生成分片下载URL失败", e);
+            return null;
+        }
+    }
+
+    /**
+     * 获取文件信息（大小、名称等）
+     *
+     * @param objectName 文件对象名称
+     * @return 文件信息 Map
+     */
+    public Map<String, Object> getFileInfo(String objectName) {
+        log.info("获取文件信息: objectName={}", objectName);
+        
+        try {
+            String bucketName = minioConfigProperties.getBucketName();
+            
+            // 获取对象统计信息
+            StatObjectResponse stat = customMinioClient.statObject(
+                    StatObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .build());
+            
+            Map<String, Object> fileInfo = new HashMap<>();
+            fileInfo.put("fileName", objectName);
+            fileInfo.put("fileSize", stat.size());
+            fileInfo.put("contentType", stat.contentType());
+            fileInfo.put("lastModified", stat.lastModified());
+            
+            log.info("文件信息获取成功: size={}", stat.size());
+            return fileInfo;
+            
+        } catch (Exception e) {
+            log.error("获取文件信息失败", e);
+            return null;
+        }
+    }
 }
